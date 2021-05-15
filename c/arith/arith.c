@@ -156,10 +156,11 @@ term_t *parse(scanner_t *s) {
             expect(s, tElse);
             t3 = parse(s);
             return newTerm(tmIf, t1, t2, t3);
-        default:
-            errExit("unexpected token \"%s\"\n", token_string[t]);
+        default: goto unexpected;
         }
     }
+unexpected:
+    errExit("unexpected token \"%s\"\n", token_string[t]);
 }
 
 char *cat(char *a, char *b) {
