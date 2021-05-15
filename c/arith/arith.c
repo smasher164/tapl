@@ -285,7 +285,10 @@ int main(int argc, char const *argv[]) {
     }
     scanner_t s = {.buf = {0}, .i = 0, .f = f};
     term_t *ast = parse(&s);
-    term_t *evaluated = evalBigStep(ast);
-    printTerm(evaluated);
+    if (smallStep) {
+        printTerm(evalSmallStep(ast));
+    } else {
+        printTerm(evalBigStep(ast));
+    }
     return (bool)fclose(f);
 }
