@@ -160,7 +160,6 @@ term_t *parse(scanner_t *s) {
             errExit("unexpected token \"%s\"\n", token_string[t]);
         }
     }
-    errExit("unreachable");
 }
 
 char *cat(char *a, char *b) {
