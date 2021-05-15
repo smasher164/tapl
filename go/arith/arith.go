@@ -14,7 +14,7 @@ var (
 )
 
 func usage() {
-	fmt.Fprint(os.Stderr, "usage: arith ( -small-step | -big-step ) [file]\n\n")
+	fmt.Fprint(os.Stderr, "usage: arith ( -small-step | -big-step ) file\n\n")
 	fmt.Fprint(os.Stderr, "arith is an implementation of the untyped calculus\n")
 	fmt.Fprint(os.Stderr, "of booleans and numbers (TAPL chapter 3 & 4).\n")
 	os.Exit(2)
@@ -190,6 +190,8 @@ func parse(tokens <-chan token) term {
 			expect(tokens, tElse)
 			t3 := parse(tokens)
 			return term{tmType: tmIf, children: []term{t1, t2, t3}}
+		default:
+			errExit(fmt.Errorf("unexpected token %q", tok))
 		}
 	}
 	panic("unreachable")
@@ -277,35 +279,35 @@ func evalSmallStep(t term) term {
 }
 
 func evalBigStep(t term) term {
-	if isVal(t) {
+	if isVal(t) || t.tmType <= tmZero {
 		return t
 	}
-	switch t.tmType {
+	switch v1 := evalBigStep(t.children[0]); t.tmType {
 	case tmIf:
-		switch v1 := evalBigStep(t.children[0]); v1.tmType {
+		switch v1.tmType {
 		case tmTrue:
 			return evalBigStep(t.children[1])
 		case tmFalse:
 			return evalBigStep(t.children[2])
 		}
 	case tmSucc:
-		if v1 := evalBigStep(t.children[0]); isNumericVal(v1) {
+		if isNumericVal(v1) {
 			return term{tmType: tmSucc, children: []term{v1}}
 		}
 	case tmPred:
-		switch v1 := evalBigStep(t.children[0]); v1.tmType {
+		switch v1.tmType {
 		case tmZero, tmSucc:
 			return v1
 		}
 	case tmIsZero:
-		switch v1 := evalBigStep(t.children[0]); v1.tmType {
+		switch v1.tmType {
 		case tmZero:
 			return term{tmType: tmTrue}
 		case tmSucc:
 			return term{tmType: tmFalse}
 		}
 	}
-	return t
+	panic("unreachable")
 }
 
 func main() {
