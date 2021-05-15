@@ -169,7 +169,9 @@ func expect(tokens <-chan token, want token) {
 }
 
 func parse(tokens <-chan token) term {
-	for tok := range tokens {
+	var tok token
+L:
+	for tok = range tokens {
 		switch tok {
 		case tTrue:
 			return term{tmType: tmTrue}
@@ -191,9 +193,10 @@ func parse(tokens <-chan token) term {
 			t3 := parse(tokens)
 			return term{tmType: tmIf, children: []term{t1, t2, t3}}
 		default:
-			errExit(fmt.Errorf("unexpected token %q", tok))
+			break L
 		}
 	}
+	errExit(fmt.Errorf("unexpected token %q", tok))
 	panic("unreachable")
 }
 
