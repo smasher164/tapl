@@ -299,8 +299,10 @@ func evalBigStep(t term) term {
 		}
 	case tmPred:
 		switch v1.tmType {
-		case tmZero, tmSucc:
+		case tmZero:
 			return v1
+		case tmSucc:
+			return v1.children[0]
 		}
 	case tmIsZero:
 		switch v1.tmType {
@@ -310,7 +312,7 @@ func evalBigStep(t term) term {
 			return term{tmType: tmFalse}
 		}
 	}
-	panic("unreachable")
+	return t
 }
 
 func main() {
