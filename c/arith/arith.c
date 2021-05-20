@@ -125,7 +125,7 @@ int childCount(term_t *t) {
 void expect(scanner_t *s, token_t want) {
     token_t got = scan(s);
     if (got != want) {
-        errExit("expected token \"%s\", got \"%s\"n\n", token_string[want], token_string[got]);
+        errExit("expected token \"%s\", got \"%s\"\n", token_string[want], token_string[got]);
     }
 }
 
@@ -261,16 +261,24 @@ term_t *evalBigStep(term_t *t) {
         case tmTrue: return evalBigStep(t->children[1]);
         case tmFalse: return evalBigStep(t->children[2]);
         }
+        break;
     case tmSucc:
         if (isNumericVal(v1)) return newTerm(tmSucc, v1, NULL, NULL);
+        break;
     case tmPred:
-        if (v1->tmType == tmZero || v1->tmType == tmSucc) return v1;
+        switch (v1->tmType) {
+        case tmZero: return v1;
+        case tmSucc: return v1->children[0];
+        }
+        break;
     case tmIsZero:
         switch (v1->tmType) {
         case tmZero: return newTerm(tmTrue, NULL, NULL, NULL);
         case tmSucc: return newTerm(tmFalse, NULL, NULL, NULL);
         }
+        break;
     }
+    return t;
 }
 
 int main(int argc, char const *argv[]) {
@@ -285,6 +293,7 @@ int main(int argc, char const *argv[]) {
     }
     scanner_t s = {.buf = {0}, .i = 0, .f = f};
     term_t *ast = parse(&s);
+    expect(&s, tEOF);
     if (smallStep) {
         printTerm(evalSmallStep(ast));
     } else {
