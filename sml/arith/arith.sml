@@ -108,13 +108,13 @@ fun eval1 t = case t of
     | Term.Pred(Term.Succ(nv1)) => 
         if isnumericval nv1
         then nv1 
-        else raise NoRuleApplies
+        else Term.Pred(Term.Succ(eval1(nv1)))
     | Term.Pred(t1) => Term.Pred(eval1 t1)
     | Term.IsZero(Term.Zero) => Term.True
     | Term.IsZero(Term.Succ(nv1)) =>
         if isnumericval nv1
         then Term.False
-        else raise NoRuleApplies
+        else Term.IsZero(Term.Succ(eval1(nv1)))
     | Term.IsZero(t1) => Term.IsZero(eval1 t1)
     | _ => raise NoRuleApplies
 
