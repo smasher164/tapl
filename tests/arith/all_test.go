@@ -6,35 +6,36 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 var (
 	testPath = func() string {
 		cwd, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
+		panicErr(err)
 		return cwd
 	}()
 	projectRoot = filepath.Dir(filepath.Dir(testPath))
 	testDir     = os.DirFS(testPath)
 	inOut       = func() map[string]string {
 		m := make(map[string]string)
-		inputFilenames, err := fs.Glob(testDir, "*.in.txt")
-		if err != nil {
-			panic(err)
-		}
-		outputFilenames, err := fs.Glob(testDir, "*.out.txt")
-		if err != nil {
-			panic(err)
-		}
-		for i, in := range inputFilenames {
-			m[filepath.Join(testPath, in)] = outputFilenames[i]
-		}
+		panicErr(fs.WalkDir(testDir, ".", func(path string, d fs.DirEntry, err error) error {
+			parts := strings.Split(path, ".")
+			if len(parts) == 3 && parts[1] == "in" {
+				m[filepath.Join(testPath, path)] = strings.Join([]string{parts[0], "out.txt"}, ".")
+			}
+			return err
+		}))
 		return m
 	}()
 )
+
+func panicErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
 
 func binExec(flag string) func(t *testing.T) {
 	return func(t *testing.T) {
