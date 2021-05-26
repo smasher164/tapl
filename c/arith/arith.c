@@ -46,12 +46,14 @@ typedef struct {
     FILE *f;
 } scanner_t;
 
-void errExit(const char *fmt, ...) {
+void errExit(scanner_t *s, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    exit(1);
+    int status = (bool)fclose(s->f);
+    if (!status) status = 1;
+    exit(status);
 }
 
 void invalidToken(scanner_t *s) {
@@ -61,7 +63,7 @@ void invalidToken(scanner_t *s) {
         fputc(s->ch, stderr);
         s->ch = fgetc(s->f);
     }
-    errExit("\" is not a valid token\n");
+    errExit(s, "\" is not a valid token\n");
 }
 
 token_t getTokenType(scanner_t *s) {
@@ -87,7 +89,7 @@ token_t scan(scanner_t *s) {
         if (s->i == 6) invalidToken(s);
         s->buf[s->i++] = s->ch;
     } while (s->ch != EOF);
-    if (ferror(s->f) != 0) errExit(strerror(errno));
+    if (ferror(s->f) != 0) errExit(s, strerror(errno));
     return tEOF;
 }
 
@@ -122,10 +124,20 @@ int childCount(term_t *t) {
     return 0;
 }
 
-void expect(scanner_t *s, token_t want) {
+void freeTerm(term_t *t) {
+    if (t == NULL) return;
+    freeTerm(t->children[0]);
+    freeTerm(t->children[1]);
+    freeTerm(t->children[2]);
+    free(t);
+}
+
+void expect(scanner_t *s, term_t *t1, term_t *t2, token_t want) {
     token_t got = scan(s);
     if (got != want) {
-        errExit("expected token \"%s\", got \"%s\"\n", token_string[want], token_string[got]);
+        freeTerm(t1);
+        freeTerm(t2);
+        errExit(s, "expected token \"%s\", got \"%s\"\n", token_string[want], token_string[got]);
     }
 }
 
@@ -151,16 +163,16 @@ term_t *parse(scanner_t *s) {
         case tIsZero: return newTerm(tmIsZero, parse(s), NULL, NULL);
         case tIf:
             t1 = parse(s);
-            expect(s, tThen);
+            expect(s, t1, NULL, tThen);
             t2 = parse(s);
-            expect(s, tElse);
+            expect(s, t1, t2, tElse);
             t3 = parse(s);
             return newTerm(tmIf, t1, t2, t3);
         default: goto unexpected;
         }
     }
 unexpected:
-    errExit("unexpected token \"%s\"\n", token_string[t]);
+    errExit(s, "unexpected token \"%s\"\n", token_string[t]);
 }
 
 char *cat(char *a, char *b) {
@@ -193,6 +205,15 @@ void printChildren(char *indent, int count, term_t *children[3]) {
 void printTerm(term_t *t) {
     printf("%s\n", tmType_string[t->tmType]);
     printChildren("", childCount(t), t->children);
+}
+
+term_t *clone(term_t *t) {
+    if (t == NULL) return NULL;
+    return newTerm(
+        t->tmType,
+        clone(t->children[0]),
+        clone(t->children[1]),
+        clone(t->children[2]));
 }
 
 bool isNumericVal(term_t *t) {
@@ -253,11 +274,14 @@ bool isVal(term_t *t) {
 }
 
 term_t *evalBigStep(term_t *t) {
-    if (isVal(t) || t->tmType <= tmZero) return t;
+    if (isVal(t) || t->tmType <= tmZero) return clone(t);
     term_t *v1 = evalBigStep(t->children[0]);
+    tmType_t vt = v1->tmType;
+    term_t *vc;
     switch (t->tmType) {
     case tmIf:
-        switch (v1->tmType) {
+        freeTerm(v1);
+        switch (vt) {
         case tmTrue: return evalBigStep(t->children[1]);
         case tmFalse: return evalBigStep(t->children[2]);
         }
@@ -268,17 +292,21 @@ term_t *evalBigStep(term_t *t) {
     case tmPred:
         switch (v1->tmType) {
         case tmZero: return v1;
-        case tmSucc: return v1->children[0];
+        case tmSucc:
+            vc = clone(v1->children[0]);
+            freeTerm(v1);
+            return vc;
         }
         break;
     case tmIsZero:
-        switch (v1->tmType) {
+        freeTerm(v1);
+        switch (vt) {
         case tmZero: return newTerm(tmTrue, NULL, NULL, NULL);
         case tmSucc: return newTerm(tmFalse, NULL, NULL, NULL);
         }
         break;
     }
-    return t;
+    return clone(t);
 }
 
 int main(int argc, char const *argv[]) {
@@ -293,11 +321,14 @@ int main(int argc, char const *argv[]) {
     }
     scanner_t s = {.buf = {0}, .i = 0, .f = f};
     term_t *ast = parse(&s);
-    expect(&s, tEOF);
+    expect(&s, ast, NULL, tEOF);
     if (smallStep) {
         printTerm(evalSmallStep(ast));
     } else {
-        printTerm(evalBigStep(ast));
+        term_t *res = evalBigStep(ast);
+        printTerm(res);
+        freeTerm(res);
     }
+    freeTerm(ast);
     return (bool)fclose(f);
 }
