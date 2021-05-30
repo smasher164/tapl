@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void usage() {
+_Noreturn void usage() {
     fprintf(stderr, "usage: arith ( -small-step | -big-step ) file\n\n");
     fprintf(stderr, "arith is an implementation of the untyped calculus\n");
     fprintf(stderr, "of booleans and numbers (TAPL chapter 3 & 4).\n");
@@ -46,7 +46,7 @@ typedef struct {
     FILE *f;
 } scanner_t;
 
-void errExit(scanner_t *s, const char *fmt, ...) {
+_Noreturn void errExit(scanner_t *s, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
@@ -56,7 +56,7 @@ void errExit(scanner_t *s, const char *fmt, ...) {
     exit(status);
 }
 
-void invalidToken(scanner_t *s) {
+_Noreturn void invalidToken(scanner_t *s) {
     fputc('"', stderr);
     fwrite(s->buf, 1, s->i, stderr);
     while (s->ch != EOF && !isspace(s->ch)) {
@@ -229,18 +229,18 @@ term_t *eval1(bool *noRuleApplies, term_t *t) {
     term_t *t1 = t->children[0];
     switch (t->tmType) {
     case tmIf:
-        if (t1->tmType == tmTrue) return t->children[1];
-        if (t1->tmType == tmFalse) return t->children[2];
+        if (t1->tmType == tmTrue) return clone(t->children[1]);
+        if (t1->tmType == tmFalse) return clone(t->children[2]);
         t1Prime = eval1(noRuleApplies, t1);
         if (*noRuleApplies) return res;
-        return newTerm(tmIf, t1Prime, t->children[1], t->children[2]);
+        return newTerm(tmIf, t1Prime, clone(t->children[1]), clone(t->children[2]));
     case tmSucc:
         t1Prime = eval1(noRuleApplies, t1);
         if (*noRuleApplies) return res;
         return newTerm(tmSucc, t1Prime, NULL, NULL);
     case tmPred:
         if (t1->tmType == tmZero) return newTerm(tmZero, NULL, NULL, NULL);
-        if (t1->tmType == tmSucc && isNumericVal(t1->children[0])) return t1->children[0];
+        if (t1->tmType == tmSucc && isNumericVal(t1->children[0])) return clone(t1->children[0]);
         t1Prime = eval1(noRuleApplies, t1);
         if (*noRuleApplies) return res;
         return newTerm(tmPred, t1Prime, NULL, NULL);
@@ -258,9 +258,13 @@ term_t *eval1(bool *noRuleApplies, term_t *t) {
 
 term_t *evalSmallStep(term_t *t) {
     bool noRuleApplies = false;
-    term_t *t1Prime = eval1(&noRuleApplies, t);
-    if (noRuleApplies) return t;
-    return evalSmallStep(t1Prime);
+    term_t *it = clone(t);
+    for (;;) {
+        term_t *t1Prime = eval1(&noRuleApplies, it);
+        if (noRuleApplies) return it;
+        freeTerm(it);
+        it = t1Prime;
+    }
 }
 
 bool isVal(term_t *t) {
@@ -284,6 +288,7 @@ term_t *evalBigStep(term_t *t) {
         switch (vt) {
         case tmTrue: return evalBigStep(t->children[1]);
         case tmFalse: return evalBigStep(t->children[2]);
+        default:;
         }
         break;
     case tmSucc:
@@ -296,6 +301,7 @@ term_t *evalBigStep(term_t *t) {
             vc = clone(v1->children[0]);
             freeTerm(v1);
             return vc;
+        default:;
         }
         break;
     case tmIsZero:
@@ -303,8 +309,10 @@ term_t *evalBigStep(term_t *t) {
         switch (vt) {
         case tmZero: return newTerm(tmTrue, NULL, NULL, NULL);
         case tmSucc: return newTerm(tmFalse, NULL, NULL, NULL);
+        default:;
         }
         break;
+    default:;
     }
     return clone(t);
 }
@@ -322,13 +330,14 @@ int main(int argc, char const *argv[]) {
     scanner_t s = {.buf = {0}, .i = 0, .f = f};
     term_t *ast = parse(&s);
     expect(&s, ast, NULL, tEOF);
+    term_t *res;
     if (smallStep) {
-        printTerm(evalSmallStep(ast));
+        res = evalSmallStep(ast);
     } else {
-        term_t *res = evalBigStep(ast);
-        printTerm(res);
-        freeTerm(res);
+        res = evalBigStep(ast);
     }
+    printTerm(res);
     freeTerm(ast);
+    freeTerm(res);
     return (bool)fclose(f);
 }
