@@ -1,1 +1,1 @@
-"foo" is not a valid token
+unexpected token "foo"

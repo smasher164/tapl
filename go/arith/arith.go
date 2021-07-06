@@ -89,7 +89,7 @@ func scan(tokens chan<- token, input *bufio.Scanner) {
 		case "iszero":
 			tokens <- tIsZero
 		default:
-			errExit(fmt.Errorf("%q is not a valid token", word))
+			errExit(fmt.Errorf("unexpected token %q", word))
 		}
 	}
 	if err := input.Err(); err != nil {

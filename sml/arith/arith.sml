@@ -38,7 +38,7 @@ struct
                 | ("succ", ns) => SOME(Succ, ns)
                 | ("pred", ns) => SOME(Pred, ns)
                 | ("iszero", ns) => SOME(IsZero, ns)
-                | (w, ns) => errExit ("\"" ^ w ^ "\"" ^ " is not a valid token\n")
+                | (w, ns) => errExit ("unexpected token \"" ^ w ^ "\"\n")
             end
     val scan = Option.valOf o TextIO.scanStream scanFn
     fun expect f want =

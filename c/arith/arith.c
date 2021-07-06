@@ -57,13 +57,13 @@ _Noreturn void errExit(scanner_t *s, const char *fmt, ...) {
 }
 
 _Noreturn void invalidToken(scanner_t *s) {
-    fputc('"', stderr);
+    fputs("unexpected token \"", stderr);
     fwrite(s->buf, 1, s->i, stderr);
     while (s->ch != EOF && !isspace(s->ch)) {
         fputc(s->ch, stderr);
         s->ch = fgetc(s->f);
     }
-    errExit(s, "\" is not a valid token\n");
+    errExit(s, "\"\n");
 }
 
 token_t getTokenType(scanner_t *s) {
