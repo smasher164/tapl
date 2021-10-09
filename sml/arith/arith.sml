@@ -1,11 +1,8 @@
-fun usage() = (
-            TextIO.output (TextIO.stdErr, "usage: arith ( -small-step | -big-step ) file\n\n");
-            TextIO.output (TextIO.stdErr, "arith is an implementation of the untyped calculus\n");
-            TextIO.output (TextIO.stdErr, "of booleans and numbers (TAPL chapter 3 & 4).\n");
-            OS.Process.exit(OS.Process.failure)
-        )
-
-fun errExit z = (TextIO.output (TextIO.stdErr, z); OS.Process.exit(OS.Process.failure))
+fun eprint s = TextIO.output (TextIO.stdErr, s ^ "\n")
+fun errExit z = (eprint z; OS.Process.exit(OS.Process.failure))
+fun usage() = errExit ("usage: arith ( -small-step | -big-step ) file\n\n"
+            ^ "arith is an implementation of the untyped calculus\n"
+            ^ "of booleans and numbers (TAPL chapter 3 & 4).")
 
 structure Token =
 struct
@@ -38,7 +35,7 @@ struct
                 | ("succ", ns) => SOME(Succ, ns)
                 | ("pred", ns) => SOME(Pred, ns)
                 | ("iszero", ns) => SOME(IsZero, ns)
-                | (w, ns) => errExit ("unexpected token \"" ^ w ^ "\"\n")
+                | (w, ns) => errExit ("unexpected token \"" ^ w ^ "\"")
             end
     val scan = Option.valOf o TextIO.scanStream scanFn
     fun expect f want =
@@ -46,7 +43,7 @@ struct
             val got = scan f
         in
             if got <> want
-            then errExit("expected token \"" ^ toString(want) ^ "\", got \"" ^ toString(got) ^ "\"\n")
+            then errExit("expected token \"" ^ toString(want) ^ "\", got \"" ^ toString(got) ^ "\"")
             else ()
         end
 end
@@ -87,7 +84,7 @@ struct
                 in
                     If(t1, t2, t3)
                 end
-            | word => errExit ("unexpected token \"" ^ Token.toString(word) ^ "\"\n")
+            | word => errExit ("unexpected token \"" ^ Token.toString(word) ^ "\"")
 end
 
 fun isnumericval (Term.Zero) = true
@@ -156,7 +153,7 @@ val _ = let
         ["-small-step",filename] => (smallStep, filename) 
     |   ["-big-step",filename] => (bigStep, filename)
     | _ => usage()
-    val f = TextIO.openIn filename
+    val f = TextIO.openIn filename handle e => (eprint (exnMessage e); usage())
     val ast = Term.parse f
     val _ = Token.expect f Token.EOF
 in
