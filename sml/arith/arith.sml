@@ -1,8 +1,10 @@
 fun eprint s = TextIO.output (TextIO.stdErr, s ^ "\n")
-fun errExit z = (eprint z; OS.Process.exit(OS.Process.failure))
+fun errExit (z, st) = (eprint z; Posix.Process.exit(Word8.fromInt(st)))
+
 fun usage() = errExit ("usage: arith ( -small-step | -big-step ) file\n\n"
             ^ "arith is an implementation of the untyped calculus\n"
-            ^ "of booleans and numbers (TAPL chapter 3 & 4).")
+            ^ "of booleans and numbers (TAPL chapter 3 & 4).", 2)
+
 
 structure Token =
 struct
@@ -35,7 +37,7 @@ struct
                 | ("succ", ns) => SOME(Succ, ns)
                 | ("pred", ns) => SOME(Pred, ns)
                 | ("iszero", ns) => SOME(IsZero, ns)
-                | (w, ns) => errExit ("unexpected token \"" ^ w ^ "\"")
+                | (w, ns) => errExit ("unexpected token \"" ^ w ^ "\"", 1)
             end
     val scan = Option.valOf o TextIO.scanStream scanFn
     fun expect f want =
@@ -43,7 +45,7 @@ struct
             val got = scan f
         in
             if got <> want
-            then errExit("expected token \"" ^ toString(want) ^ "\", got \"" ^ toString(got) ^ "\"")
+            then errExit("expected token \"" ^ toString(want) ^ "\", got \"" ^ toString(got) ^ "\"", 1)
             else ()
         end
 end
@@ -84,7 +86,7 @@ struct
                 in
                     If(t1, t2, t3)
                 end
-            | word => errExit ("unexpected token \"" ^ Token.toString(word) ^ "\"")
+            | word => errExit ("unexpected token \"" ^ Token.toString(word) ^ "\"", 1)
 end
 
 fun isnumericval (Term.Zero) = true
