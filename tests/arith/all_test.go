@@ -37,10 +37,10 @@ func panicErr(err error) {
 	}
 }
 
-func binExec(flag string) func(t *testing.T) {
+func test(name string, args ...string) func(t *testing.T) {
 	return func(t *testing.T) {
 		for in, out := range inOut {
-			got, err := exec.Command("./arith", flag, in).CombinedOutput()
+			got, err := exec.Command(name, append(args, in)...).CombinedOutput()
 			if _, ok := err.(*exec.ExitError); !ok && err != nil {
 				t.Fatal(err)
 			}
@@ -55,37 +55,53 @@ func binExec(flag string) func(t *testing.T) {
 	}
 }
 
+func run(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func TestGo(t *testing.T) {
 	goDir := filepath.Join(projectRoot, "go", "arith")
 	os.Chdir(goDir)
-	if err := exec.Command("go", "build").Run(); err != nil {
+	if err := run("go", "build"); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("SmallStep", binExec("-small-step"))
-	t.Run("BigStep", binExec("-big-step"))
+	t.Run("SmallStep", test("./arith", "-small-step"))
+	t.Run("BigStep", test("./arith", "-big-step"))
 }
 
 func TestSML(t *testing.T) {
 	smlDir := filepath.Join(projectRoot, "sml", "arith")
 	os.Chdir(smlDir)
-	if err := exec.Command(
+	if err := run(
 		"mlton",
 		"-default-ann", "allowExtendedTextConsts true",
 		"-default-ann", "allowOrPats true",
 		"arith.sml",
-	).Run(); err != nil {
+	); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("SmallStep", binExec("-small-step"))
-	t.Run("BigStep", binExec("-big-step"))
+	t.Run("SmallStep", test("./arith", "-small-step"))
+	t.Run("BigStep", test("./arith", "-big-step"))
 }
 
 func TestC(t *testing.T) {
 	cDir := filepath.Join(projectRoot, "c", "arith")
 	os.Chdir(cDir)
-	if err := exec.Command("cc", "-o", "arith", "arith.c").Run(); err != nil {
+	if err := run("cc", "-o", "arith", "arith.c"); err != nil {
 		t.Fatal(err)
 	}
-	t.Run("SmallStep", binExec("-small-step"))
-	t.Run("BigStep", binExec("-big-step"))
+	t.Run("SmallStep", test("./arith", "-small-step"))
+	t.Run("BigStep", test("./arith", "-big-step"))
+}
+
+func TestRust(t *testing.T) {
+	rustDir := filepath.Join(projectRoot, "rust")
+	os.Chdir(rustDir)
+	if err := run("cargo", "build", "--quiet", "--release", "-p", "arith"); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("SmallStep", test("./target/release/arith", "-small-step"))
+	t.Run("BigStep", test("./target/release/arith", "-big-step"))
 }
