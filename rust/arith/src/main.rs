@@ -192,15 +192,15 @@ impl Term {
     fn fmt_children(&self, f: &mut fmt::Formatter<'_>, indent: String) -> fmt::Result {
         match self {
             Term::Succ(t) | Term::Pred(t) | Term::IsZero(t) => {
-                write!(f, "{}└─{}\n", indent, t.name())?;
+                writeln!(f, "{}└─{}", indent, t.name())?;
                 t.fmt_children(f, indent + "  ")
             }
             Term::If(t1, t2, t3) => {
-                write!(f, "{}├─{}\n", indent, t1.name())?;
+                writeln!(f, "{}├─{}", indent, t1.name())?;
                 t1.fmt_children(f, indent.clone() + "│ ")?;
-                write!(f, "{}├─{}\n", indent, t2.name())?;
+                writeln!(f, "{}├─{}", indent, t2.name())?;
                 t2.fmt_children(f, indent.clone() + "│ ")?;
-                write!(f, "{}└─{}\n", indent, t3.name())?;
+                writeln!(f, "{}└─{}", indent, t3.name())?;
                 t3.fmt_children(f, indent + "  ")
             }
             _ => Ok(()),
