@@ -39,24 +39,24 @@ impl Display for ArithError {
     }
 }
 
-fn eval1(t: Box<Term>) -> Result<Box<Term>, ArithError> {
-    match *t {
+fn eval1(t: Term) -> Result<Box<Term>, ArithError> {
+    match t {
         Term::If(t1, t2, t3) => match *t1 {
             Term::True => Ok(t2),
             Term::False => Ok(t3),
-            _ => Ok(Box::from(Term::If(eval1(t1)?, t2, t3))),
+            _ => Ok(Box::from(Term::If(eval1(*t1)?, t2, t3))),
         },
-        Term::Succ(t1) => Ok(Box::from(Term::Succ(eval1(t1)?))),
+        Term::Succ(t1) => Ok(Box::from(Term::Succ(eval1(*t1)?))),
         Term::Pred(t1) => match *t1 {
             Term::Zero => Ok(Box::from(Term::Zero)),
             Term::Succ(nv1) => {
                 if nv1.is_numeric_val() {
                     Ok(nv1)
                 } else {
-                    Ok(Box::from(Term::Pred(eval1(Box::from(Term::Succ(nv1)))?)))
+                    Ok(Box::from(Term::Pred(eval1(Term::Succ(nv1))?)))
                 }
             }
-            _ => Ok(Box::from(Term::Pred(eval1(t1)?))),
+            _ => Ok(Box::from(Term::Pred(eval1(*t1)?))),
         },
         Term::IsZero(t1) => match *t1 {
             Term::Zero => Ok(Box::from(Term::True)),
@@ -64,17 +64,17 @@ fn eval1(t: Box<Term>) -> Result<Box<Term>, ArithError> {
                 if nv1.is_numeric_val() {
                     Ok(Box::from(Term::False))
                 } else {
-                    Ok(Box::from(Term::IsZero(eval1(Box::from(Term::Succ(nv1)))?)))
+                    Ok(Box::from(Term::IsZero(eval1(Term::Succ(nv1))?)))
                 }
             }
-            _ => Ok(Box::from(Term::IsZero(eval1(t1)?))),
+            _ => Ok(Box::from(Term::IsZero(eval1(*t1)?))),
         },
         _ => Err(ArithError::NoRuleApplies),
     }
 }
 
 fn small_step(t: Box<Term>) -> Box<Term> {
-    match eval1(t.clone()) {
+    match eval1(*t.clone()) {
         Ok(t_prime) => small_step(t_prime),
         Err(_) => t,
     }
