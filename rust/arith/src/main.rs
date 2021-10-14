@@ -21,7 +21,7 @@ fn err_exit(e: Box<dyn Error>) -> ! {
 #[derive(Debug)]
 enum ArithError {
     UnexpectedToken(String),
-    ExpectedGotToken(String, String),
+    ExpectedGotToken(Token, String),
     NoRuleApplies,
 }
 
@@ -106,7 +106,7 @@ fn big_step(t: Box<Term>) -> Box<Term> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Token {
     EoF,
     True,
@@ -141,18 +141,22 @@ impl FromStr for Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Token::EoF => write!(f, "EOF"),
-            Token::True => write!(f, "true"),
-            Token::False => write!(f, "false"),
-            Token::If => write!(f, "if"),
-            Token::Then => write!(f, "then"),
-            Token::Else => write!(f, "else"),
-            Token::Zero => write!(f, "0"),
-            Token::Succ => write!(f, "succ"),
-            Token::Pred => write!(f, "pred"),
-            Token::IsZero => write!(f, "iszero"),
-        }
+        write!(
+            f,
+            "{}",
+            match self {
+                Token::EoF => "EOF",
+                Token::True => "true",
+                Token::False => "false",
+                Token::If => "if",
+                Token::Then => "then",
+                Token::Else => "else",
+                Token::Zero => "0",
+                Token::Succ => "succ",
+                Token::Pred => "pred",
+                Token::IsZero => "iszero",
+            }
+        )
     }
 }
 
@@ -226,11 +230,11 @@ fn expect(
         Some(Ok(got)) if got == want => Ok(()),
         None if want == Token::EoF => Ok(()),
         Some(got) => Err(Box::from(ArithError::ExpectedGotToken(
-            want.to_string(),
+            want,
             got?.to_string(),
         ))),
         None => Err(Box::from(ArithError::ExpectedGotToken(
-            want.to_string(),
+            want,
             Token::EoF.to_string(),
         ))),
     }
@@ -264,6 +268,7 @@ fn parse(
 }
 
 type Evaluator = fn(Box<Term>) -> Box<Term>;
+
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
     let str_args: Vec<_> = args.iter().map(|s| s.as_str()).collect();
