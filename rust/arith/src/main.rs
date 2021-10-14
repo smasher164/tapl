@@ -118,7 +118,7 @@ fn big_step(t: Box<Term>) -> Box<Term> {
 
 #[derive(Debug, PartialEq)]
 enum Token {
-    EOF,
+    EoF,
     True,
     False,
     If,
@@ -152,7 +152,7 @@ impl FromStr for Token {
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::EOF => write!(f, "EOF"),
+            Token::EoF => write!(f, "EOF"),
             Token::True => write!(f, "true"),
             Token::False => write!(f, "false"),
             Token::If => write!(f, "if"),
@@ -245,10 +245,10 @@ fn expect(
             }
         }
         None => {
-            if want != Token::EOF {
+            if want != Token::EoF {
                 Err(Box::from(ArithError::ExpectedGotToken(
                     want.to_string(),
-                    Token::EOF.to_string(),
+                    Token::EoF.to_string(),
                 )))
             } else {
                 Ok(())
@@ -279,15 +279,16 @@ fn parse(
             tok => Err(Box::from(ArithError::UnexpectedToken(tok.to_string()))),
         },
         None => Err(Box::from(ArithError::UnexpectedToken(
-            Token::EOF.to_string(),
+            Token::EoF.to_string(),
         ))),
     }
 }
 
+type Evaluator = fn(Box<Term>) -> Box<Term>;
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
     let str_args: Vec<_> = args.iter().map(|s| s.as_str()).collect();
-    let (eval, filename): (fn(Box<Term>) -> Box<Term>, &&str) = match &str_args[..] {
+    let (eval, filename): (Evaluator, &&str) = match &str_args[..] {
         ["-small-step", filename] => (small_step, filename),
         ["-big-step", filename] => (big_step, filename),
         _ => usage(),
@@ -305,6 +306,6 @@ fn main() {
         Err(e) => vec![Err(Box::from(e))].into_iter(),
     });
     let ast = parse(&mut tokens).unwrap_or_else(|e| err_exit(e));
-    expect(&mut tokens, Token::EOF).unwrap_or_else(|e| err_exit(e));
+    expect(&mut tokens, Token::EoF).unwrap_or_else(|e| err_exit(e));
     print!("{}", eval(Box::from(ast)));
 }
