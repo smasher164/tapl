@@ -49,24 +49,14 @@ fn eval1(t: Term) -> Result<Box<Term>, ArithError> {
         Term::Succ(t1) => Ok(Box::from(Term::Succ(eval1(*t1)?))),
         Term::Pred(t1) => match *t1 {
             Term::Zero => Ok(Box::from(Term::Zero)),
-            Term::Succ(nv1) => {
-                if nv1.is_numeric_val() {
-                    Ok(nv1)
-                } else {
-                    Ok(Box::from(Term::Pred(eval1(Term::Succ(nv1))?)))
-                }
-            }
+            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(nv1),
+            Term::Succ(nv1) => Ok(Box::from(Term::Pred(eval1(Term::Succ(nv1))?))),
             _ => Ok(Box::from(Term::Pred(eval1(*t1)?))),
         },
         Term::IsZero(t1) => match *t1 {
             Term::Zero => Ok(Box::from(Term::True)),
-            Term::Succ(nv1) => {
-                if nv1.is_numeric_val() {
-                    Ok(Box::from(Term::False))
-                } else {
-                    Ok(Box::from(Term::IsZero(eval1(Term::Succ(nv1))?)))
-                }
-            }
+            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(Box::from(Term::False)),
+            Term::Succ(nv1) => Ok(Box::from(Term::IsZero(eval1(Term::Succ(nv1))?))),
             _ => Ok(Box::from(Term::IsZero(eval1(*t1)?))),
         },
         _ => Err(ArithError::NoRuleApplies),
@@ -233,27 +223,16 @@ fn expect(
     want: Token,
 ) -> Result<(), Box<dyn Error>> {
     match tokens.next() {
-        Some(res) => {
-            let got = res?;
-            if want != got {
-                Err(Box::from(ArithError::ExpectedGotToken(
-                    want.to_string(),
-                    got.to_string(),
-                )))
-            } else {
-                Ok(())
-            }
-        }
-        None => {
-            if want != Token::EoF {
-                Err(Box::from(ArithError::ExpectedGotToken(
-                    want.to_string(),
-                    Token::EoF.to_string(),
-                )))
-            } else {
-                Ok(())
-            }
-        }
+        Some(Ok(got)) if got == want => Ok(()),
+        None if want == Token::EoF => Ok(()),
+        Some(got) => Err(Box::from(ArithError::ExpectedGotToken(
+            want.to_string(),
+            got?.to_string(),
+        ))),
+        None => Err(Box::from(ArithError::ExpectedGotToken(
+            want.to_string(),
+            Token::EoF.to_string(),
+        ))),
     }
 }
 
