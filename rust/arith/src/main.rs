@@ -4,6 +4,7 @@ use std::fmt::{self, Display};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::process;
+use std::rc::Rc;
 use std::str::FromStr;
 
 fn usage() -> ! {
@@ -39,67 +40,67 @@ impl Display for ArithError {
     }
 }
 
-fn eval1(t: Term) -> Result<Box<Term>, ArithError> {
-    match t {
+fn eval1(t: Rc<Term>) -> Result<Rc<Term>, ArithError> {
+    match (*t).clone() {
         Term::If(t1, t2, t3) => match *t1 {
             Term::True => Ok(t2),
             Term::False => Ok(t3),
-            _ => Ok(Box::from(Term::If(eval1(*t1)?, t2, t3))),
+            _ => Ok(Rc::new(Term::If(eval1(t1)?, t2, t3))),
         },
-        Term::Succ(t1) => Ok(Box::from(Term::Succ(eval1(*t1)?))),
-        Term::Pred(t1) => match *t1 {
-            Term::Zero => Ok(Box::from(Term::Zero)),
+        Term::Succ(t1) => Ok(Rc::new(Term::Succ(eval1(t1)?))),
+        Term::Pred(t1) => match (*t1).clone() {
+            Term::Zero => Ok(Rc::new(Term::Zero)),
             Term::Succ(nv1) if nv1.is_numeric_val() => Ok(nv1),
-            Term::Succ(nv1) => Ok(Box::from(Term::Pred(eval1(Term::Succ(nv1))?))),
-            _ => Ok(Box::from(Term::Pred(eval1(*t1)?))),
+            Term::Succ(nv1) => Ok(Rc::new(Term::Pred(eval1(Rc::new(Term::Succ(nv1)))?))),
+            _ => Ok(Rc::new(Term::Pred(eval1(t1)?))),
         },
-        Term::IsZero(t1) => match *t1 {
-            Term::Zero => Ok(Box::from(Term::True)),
-            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(Box::from(Term::False)),
-            Term::Succ(nv1) => Ok(Box::from(Term::IsZero(eval1(Term::Succ(nv1))?))),
-            _ => Ok(Box::from(Term::IsZero(eval1(*t1)?))),
+        Term::IsZero(t1) => match (*t1).clone() {
+            Term::Zero => Ok(Rc::new(Term::True)),
+            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(Rc::new(Term::False)),
+            Term::Succ(nv1) => Ok(Rc::new(Term::IsZero(eval1(Rc::new(Term::Succ(nv1)))?))),
+            _ => Ok(Rc::new(Term::IsZero(eval1(t1)?))),
         },
         _ => Err(ArithError::NoRuleApplies),
     }
 }
 
-fn small_step(t: Box<Term>) -> Box<Term> {
-    match eval1(*t.clone()) {
+fn small_step(t: Rc<Term>) -> Rc<Term> {
+    match eval1(t.clone()) {
         Ok(t_prime) => small_step(t_prime),
         Err(_) => t,
     }
 }
 
-fn big_step(t: Box<Term>) -> Box<Term> {
+fn big_step(t: Rc<Term>) -> Rc<Term> {
     if t.is_val() {
         t
     } else {
-        match *t {
+        match (*t).clone() {
             Term::True | Term::False | Term::Zero => t,
-            Term::If(ref t1, ref t2, ref t3) => match *big_step(t1.clone()) {
-                Term::True => big_step(t2.clone()),
-                Term::False => big_step(t3.clone()),
+            Term::If(t1, t2, t3) => match *big_step(t1) {
+                Term::True => big_step(t2),
+                Term::False => big_step(t3),
                 _ => t,
             },
-            Term::Succ(ref t1) => {
-                let v1 = big_step(t1.clone());
+            Term::Succ(t1) => {
+                let v1 = big_step(t1);
                 if v1.is_numeric_val() {
-                    Box::from(Term::Succ(v1))
+                    Rc::new(Term::Succ(v1))
                 } else {
                     t
                 }
             }
-            Term::Pred(ref t1) => {
-                let v1 = big_step(t1.clone());
-                match *v1 {
+            Term::Pred(t1) => {
+                let v1 = big_step(t1);
+                match (*v1).clone() {
                     Term::Zero => v1,
                     Term::Succ(nv1) => nv1,
                     _ => t,
                 }
             }
             Term::IsZero(ref t1) => match *big_step(t1.clone()) {
-                Term::Zero => Box::from(Term::True),
-                Term::Succ(_) => Box::from(Term::False),
+                Term::Zero => Rc::new(Term::True),
+                Term::Succ(_) => Rc::new(Term::False),
                 _ => t,
             },
         }
@@ -165,10 +166,10 @@ enum Term {
     True,
     False,
     Zero,
-    Succ(Box<Term>),
-    Pred(Box<Term>),
-    IsZero(Box<Term>),
-    If(Box<Term>, Box<Term>, Box<Term>),
+    Succ(Rc<Term>),
+    Pred(Rc<Term>),
+    IsZero(Rc<Term>),
+    If(Rc<Term>, Rc<Term>, Rc<Term>),
 }
 
 impl Term {
@@ -248,15 +249,15 @@ fn parse(
             Token::True => Ok(Term::True),
             Token::False => Ok(Term::False),
             Token::Zero => Ok(Term::Zero),
-            Token::Succ => Ok(Term::Succ(Box::from(parse(tokens)?))),
-            Token::Pred => Ok(Term::Pred(Box::from(parse(tokens)?))),
-            Token::IsZero => Ok(Term::IsZero(Box::from(parse(tokens)?))),
+            Token::Succ => Ok(Term::Succ(Rc::new(parse(tokens)?))),
+            Token::Pred => Ok(Term::Pred(Rc::new(parse(tokens)?))),
+            Token::IsZero => Ok(Term::IsZero(Rc::new(parse(tokens)?))),
             Token::If => {
-                let t1 = Box::from(parse(tokens)?);
+                let t1 = Rc::new(parse(tokens)?);
                 expect(tokens, Token::Then)?;
-                let t2 = Box::from(parse(tokens)?);
+                let t2 = Rc::new(parse(tokens)?);
                 expect(tokens, Token::Else)?;
-                let t3 = Box::from(parse(tokens)?);
+                let t3 = Rc::new(parse(tokens)?);
                 Ok(Term::If(t1, t2, t3))
             }
             tok => Err(Box::from(ArithError::UnexpectedToken(tok.to_string()))),
@@ -267,7 +268,7 @@ fn parse(
     }
 }
 
-type Evaluator = fn(Box<Term>) -> Box<Term>;
+type Evaluator = fn(Rc<Term>) -> Rc<Term>;
 
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
@@ -291,5 +292,5 @@ fn main() {
     });
     let ast = parse(&mut tokens).unwrap_or_else(|e| err_exit(e));
     expect(&mut tokens, Token::EoF).unwrap_or_else(|e| err_exit(e));
-    print!("{}", eval(Box::from(ast)));
+    print!("{}", eval(Rc::new(ast)));
 }
