@@ -41,24 +41,24 @@ impl Display for ArithError {
 
 fn eval1(t: Term) -> Result<Box<Term>, ArithError> {
     match t {
-        Term::If(t1, t2, t3) => match *t1 {
-            Term::True => Ok(t2),
-            Term::False => Ok(t3),
-            _ => Ok(Box::from(Term::If(eval1(*t1)?, t2, t3))),
-        },
+        Term::If(t1, t2, t3) => Ok(match *t1 {
+            Term::True => t2,
+            Term::False => t3,
+            _ => Box::from(Term::If(eval1(*t1)?, t2, t3)),
+        }),
         Term::Succ(t1) => Ok(Box::from(Term::Succ(eval1(*t1)?))),
-        Term::Pred(t1) => match *t1 {
-            Term::Zero => Ok(Box::from(Term::Zero)),
-            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(nv1),
-            Term::Succ(nv1) => Ok(Box::from(Term::Pred(eval1(Term::Succ(nv1))?))),
-            _ => Ok(Box::from(Term::Pred(eval1(*t1)?))),
-        },
-        Term::IsZero(t1) => match *t1 {
-            Term::Zero => Ok(Box::from(Term::True)),
-            Term::Succ(nv1) if nv1.is_numeric_val() => Ok(Box::from(Term::False)),
-            Term::Succ(nv1) => Ok(Box::from(Term::IsZero(eval1(Term::Succ(nv1))?))),
-            _ => Ok(Box::from(Term::IsZero(eval1(*t1)?))),
-        },
+        Term::Pred(t1) => Ok(match *t1 {
+            Term::Zero => Box::from(Term::Zero),
+            Term::Succ(nv1) if nv1.is_numeric_val() => nv1,
+            Term::Succ(nv1) => Box::from(Term::Pred(eval1(Term::Succ(nv1))?)),
+            _ => Box::from(Term::Pred(eval1(*t1)?)),
+        }),
+        Term::IsZero(t1) => Ok(Box::from(match *t1 {
+            Term::Zero => Term::True,
+            Term::Succ(nv1) if nv1.is_numeric_val() => Term::False,
+            Term::Succ(nv1) => Term::IsZero(eval1(Term::Succ(nv1))?),
+            _ => Term::IsZero(eval1(*t1)?),
+        })),
         _ => Err(ArithError::NoRuleApplies),
     }
 }
@@ -284,7 +284,7 @@ fn main() {
     let mut tokens = BufReader::new(file).lines().flat_map(|res| match res {
         Ok(l) => l
             .split_whitespace()
-            .map(|s| Token::from_str(s))
+            .map(Token::from_str)
             .collect::<Vec<Result<_, _>>>()
             .into_iter(),
         Err(e) => vec![Err(Box::from(e))].into_iter(),
