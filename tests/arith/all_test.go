@@ -105,3 +105,10 @@ func TestRust(t *testing.T) {
 	t.Run("SmallStep", test("./target/release/arith", "-small-step"))
 	t.Run("BigStep", test("./target/release/arith", "-big-step"))
 }
+
+func TestRaku(t *testing.T) {
+	rakuDir := filepath.Join(projectRoot, "raku", "arith")
+	os.Chdir(rakuDir)
+	t.Run("SmallStep", test("raku", "arith.raku", "-small-step"))
+	t.Run("BigStep", test("raku", "arith.raku", "-big-step"))
+}
