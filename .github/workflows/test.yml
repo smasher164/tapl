@@ -1,0 +1,13 @@
+name: Tests
+on: push
+jobs:
+  flakes-simple:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: nixbuild/nix-quick-install-action@v7
+        with:
+          nix_version: 2.4pre20210908_3c56f62
+          nix_conf: experimental-features = nix-command flakes
+      - name: nix develop
+        run: nix develop -c go test -v tests/arith/all_test.go
