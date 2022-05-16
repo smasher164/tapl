@@ -5,8 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// on windows, we need to set binary mode
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 
 _Noreturn void usage() {
     fprintf(stderr, "usage: arith ( -small-step | -big-step ) file\n\n");
@@ -321,8 +325,11 @@ term_t *evalBigStep(term_t *t) {
 }
 
 int main(int argc, char const *argv[]) {
-    setmode(fileno(stdout), O_BINARY);
-    setmode(fileno(stderr), O_BINARY);
+    // on windows, we set binary mode
+    #ifdef _WIN32
+    _setmode(_fileno(stdout), _O_BINARY);
+    _setmode(_fileno(stderr), _O_BINARY);
+    #endif
     if (argc != 3) usage();
     bool smallStep = !strcmp(argv[1], "-small-step") || !strcmp(argv[2], "-small-step");
     bool bigStep = !strcmp(argv[1], "-big-step") || !strcmp(argv[2], "-big-step");
