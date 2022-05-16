@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <io.h>
+#include <fcntl.h>
 
 _Noreturn void usage() {
     fprintf(stderr, "usage: arith ( -small-step | -big-step ) file\n\n");
@@ -191,10 +193,10 @@ void printChildren(char *indent, int count, term_t *children[3]) {
     for (int i = 0; i < count; i++) {
         t = children[i];
         if (i == (count - 1)) {
-            printf("%s└─%s\n", indent, tmType_string[t->tmType]);
+            fprintf(stdout, "%s└─%s\n", indent, tmType_string[t->tmType]);
             printChildren(indentA, childCount(t), t->children);
         } else {
-            printf("%s├─%s\n", indent, tmType_string[t->tmType]);
+            fprintf(stdout, "%s├─%s\n", indent, tmType_string[t->tmType]);
             printChildren(indentB, childCount(t), t->children);
         }
     }
@@ -203,7 +205,7 @@ void printChildren(char *indent, int count, term_t *children[3]) {
 }
 
 void printTerm(term_t *t) {
-    printf("%s\n", tmType_string[t->tmType]);
+    fprintf(stdout, "%s\n", tmType_string[t->tmType]);
     printChildren("", childCount(t), t->children);
 }
 
@@ -225,7 +227,8 @@ bool isNumericVal(term_t *t) {
 }
 
 term_t *eval1(bool *noRuleApplies, term_t *t) {
-    term_t *t1Prime, *res;
+    term_t *t1Prime;
+    term_t *res = NULL;
     term_t *t1 = t->children[0];
     switch (t->tmType) {
     case tmIf:
@@ -318,6 +321,8 @@ term_t *evalBigStep(term_t *t) {
 }
 
 int main(int argc, char const *argv[]) {
+    setmode(fileno(stdout), O_BINARY);
+    setmode(fileno(stderr), O_BINARY);
     if (argc != 3) usage();
     bool smallStep = !strcmp(argv[1], "-small-step") || !strcmp(argv[2], "-small-step");
     bool bigStep = !strcmp(argv[1], "-big-step") || !strcmp(argv[2], "-big-step");

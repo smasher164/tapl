@@ -62,6 +62,9 @@ func run(name string, args ...string) error {
 }
 
 func TestGo(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("could not find 'go' executable in PATH")
+	}
 	goDir := filepath.Join(projectRoot, "go", "arith")
 	os.Chdir(goDir)
 	if err := run("go", "build"); err != nil {
@@ -72,6 +75,9 @@ func TestGo(t *testing.T) {
 }
 
 func TestSML(t *testing.T) {
+	if _, err := exec.LookPath("mlton"); err != nil {
+		t.Skip("could not find 'mlton' executable in PATH")
+	}
 	smlDir := filepath.Join(projectRoot, "sml", "arith")
 	os.Chdir(smlDir)
 	if err := run(
@@ -87,16 +93,29 @@ func TestSML(t *testing.T) {
 }
 
 func TestC(t *testing.T) {
-	cDir := filepath.Join(projectRoot, "c", "arith")
-	os.Chdir(cDir)
-	if err := run("cc", "-o", "arith", "arith.c"); err != nil {
-		t.Fatal(err)
+	if _, err := exec.LookPath("cc"); err == nil {
+		cDir := filepath.Join(projectRoot, "c", "arith")
+		os.Chdir(cDir)
+		if err := run("cc", "-o", "arith", "arith.c"); err != nil {
+			t.Fatal(err)
+		}
+	} else if _, err := exec.LookPath("cl"); err == nil {
+		cDir := filepath.Join(projectRoot, "c", "arith")
+		os.Chdir(cDir)
+		if err := run("cl", "/std:c11", "/Fearith", "arith.c"); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		t.Skip("could not find 'cc' or 'cl' in PATH")
 	}
 	t.Run("SmallStep", test("./arith", "-small-step"))
 	t.Run("BigStep", test("./arith", "-big-step"))
 }
 
 func TestRust(t *testing.T) {
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("could not find 'cargo' executable in PATH")
+	}
 	rustDir := filepath.Join(projectRoot, "rust")
 	os.Chdir(rustDir)
 	if err := run("cargo", "build", "--quiet", "--release", "-p", "arith"); err != nil {
@@ -107,6 +126,9 @@ func TestRust(t *testing.T) {
 }
 
 func TestRaku(t *testing.T) {
+	if _, err := exec.LookPath("raku"); err != nil {
+		t.Skip("could not find 'raku' executable in PATH")
+	}
 	rakuDir := filepath.Join(projectRoot, "raku", "arith")
 	os.Chdir(rakuDir)
 	t.Run("SmallStep", test("raku", "arith.raku", "-small-step"))
