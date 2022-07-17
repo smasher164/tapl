@@ -9,5 +9,7 @@ jobs:
         with:
           nix_version: 2.4pre20210908_3c56f62
           nix_conf: experimental-features = nix-command flakes
-      - name: nix develop
+      - name: arith
         run: nix develop -c go test -v tests/arith/all_test.go
+      - name: untyped
+        run: nix develop -c go test -v tests/untyped/all_test.go
