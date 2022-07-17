@@ -150,26 +150,26 @@ struct
             else
                 tl
         | _ => errExit("expected token \"" ^ t ^ "\", got \"" ^ "EOF" ^ "\"", 1)
-    fun parseLambda (ctx: string list) (tokens: string list) : term * string list * string list =
+    fun parseLambda (ctx: string list) (tokens: string list) : term * string list =
         case tokens of
         (tok::tokens) =>
             let
                 (* val _ = print "parseLambda\n" *)
                 val tokens = expect "." tokens
-                val (body,ctx,tokens) = parse (tok::ctx) tokens
+                val (body,tokens) = parse (tok::ctx) tokens
             in
-                (Abs(tok,body),List.tl ctx,tokens)
+                (Abs(tok,body),tokens)
             end
         | _ => errExit("expected identifier, got \"" ^ "EOF" ^ "\"", 1) 
-    and parseParenExpr ctx (tok::tokens) : term* string list * string list =
+    and parseParenExpr ctx (tok::tokens) : term * string list =
         let
             (* val _ = print "parseParenExpr\n" *)
-            val (t,ctx,tokens) = parse ctx (tok::tokens)
+            val (t,tokens) = parse ctx (tok::tokens)
         in
-            (t, ctx, expect ")" tokens)
+            (t, expect ")" tokens)
         end
         | parseParenExpr _ _ = unexpected "EOF"
-    and parseSingle ctx (tokens: string list) : term * string list * string list =
+    and parseSingle ctx (tokens: string list) : term * string list =
         let
             (* val _ = print "parseSingle\n" *)
         in
@@ -181,14 +181,10 @@ struct
                 | "λ" => parseLambda ctx tokens
                 | id => (
                     case (indexOf id ctx) of
-                    SOME(i) => (Var(i),ctx,tokens)
+                    SOME(i) => (Var(i),tokens)
                     | NONE => let
                         in
-                        (*
-                        List.map (fn s => print ("CTX: "^s^"\n")) (ctx@[id]);
-                        errExit("undefined var \"" ^ id ^ "\"", 1)
-                        *)
-                        (Var(List.length ctx), ctx@[id], tokens)
+                        errExit("undefined variable \"" ^ id ^ "\"", 1)
                         end
                     )
                 )
@@ -197,15 +193,15 @@ struct
     and parse ctx (tokens: string list) =
         let
             (* val _ = print "parse\n" *)
-            val (a,ctx,tokens) = parseSingle ctx tokens
+            val (a,tokens) = parseSingle ctx tokens
         in
             if (List.length tokens) = 0 orelse ((List.hd tokens) = ")") then
-                (a,ctx,tokens)
+                (a,tokens)
             else
                 let
-                    val (b,ctx,tokens) = parseSingle ctx tokens
+                    val (b,tokens) = parseSingle ctx tokens
                 in
-                    (App(a,b),ctx,tokens)
+                    (App(a,b),tokens)
                 end
         end
 end
@@ -217,15 +213,15 @@ val _ = let
     | _ => usage()
     val f = TextIO.openIn filename handle e => (eprint (exnMessage e); usage())
     val tokens = Term.scan f
-    val (ast,ctx,tokens) = Term.parse [] tokens
+    val (ast,tokens) = Term.parse [] tokens
     val _ = if (List.length tokens) <> 0 then
         errExit("expected token \"" ^ "EOF" ^ "\", got \"" ^ (List.hd tokens) ^ "\"", 1)
     else
         ()
     val ast = eval ast
-    val s = Term.toString ctx ast
+    val s = Term.toString [] ast
 in
     (* List.map (fn s => print ("TOKEN: "^s^"\n")) tokens; *)
     (* List.map (fn s => print ("CTX: "^s^"\n")) ctx; *)
-    print s
+    print (s ^ "\n")
 end
