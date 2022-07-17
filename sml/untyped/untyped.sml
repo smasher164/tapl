@@ -1,5 +1,6 @@
 fun eprint s = TextIO.output (TextIO.stdErr, s ^ "\n")
 fun errExit (z, st) = (eprint z; Posix.Process.exit(Word8.fromInt(st)))
+fun unexpected s = errExit ("unexpected token \"" ^ s ^ "\"", 1)
 
 fun usage() = errExit ("usage: untyped ( -small-step | -big-step ) file\n\n"
             ^ "untyped is an implementation of the untyped lambda calculus (TAPL chapters 5-7).", 2)
@@ -17,27 +18,41 @@ struct
         then pickFreshName ctx (s ^ "'")
         else (s::ctx,s)
     (* assumes v is inside list. *)
-    fun indexOf v (hd::tl) = 
+    fun indexOf (v: string) ((hd::tl) : string list) : int option = 
         if v = hd then
-            0
+            SOME(0)
         else
-            1 + (indexOf v tl)
-        | indexOf v [] = 0
-    fun toString ctx t = case t of
-        Abs (s,t1) =>
-            let val (ctx,s) = pickFreshName ctx s in
-                "(λ" ^ s ^ "." ^ (toString ctx t1) ^ ")"
-            end
-        | App(t1,t2) =>
-            "(" ^ (toString ctx t1) ^ " " ^ (toString ctx t2) ^ ")"
-        | Var(x) =>
-            List.nth (ctx, x)
+            (case (indexOf v tl) of
+            SOME(i) => SOME(1+i)
+            | NONE => NONE
+            )
+        | indexOf v [] = NONE
     fun toDeBruijnString t = case t of
         Abs (s,t1) =>
             "(λ." ^ (toDeBruijnString t1) ^ ")"
         | App(t1,t2) =>
             "(" ^ (toDeBruijnString t1) ^ " " ^ (toDeBruijnString t2) ^ ")"
         | Var(x) => Int.toString x
+    fun toString ctx t = case t of
+        Abs (s,t1) =>
+            let
+                (* val _ = print ("Abs " ^ s ^ "\n") *)
+                val (ctx,s) = pickFreshName ctx s
+            in
+                "(λ" ^ s ^ "." ^ (toString ctx t1) ^ ")"
+            end
+        | App(t1,t2) =>
+            let
+                (* val _ = print ("App t1: " ^ (toDeBruijnString t1) ^ " t2: " ^ (toDeBruijnString t2) ^ "\n") *)
+            in
+                "(" ^ (toString ctx t1) ^ " " ^ (toString ctx t2) ^ ")"
+            end
+        | Var(x) =>
+            let
+                (* val _ = print ("Var: " ^ (Int.toString x) ^ " Len: " ^ (Int.toString (List.length ctx)) ^ "\n") *)
+            in
+                List.nth (ctx, x)
+            end
     fun shift d c t = case t of
         Var(k) => if k < c then Var(k) else Var(k+d)
         | Abs(s,t1) => Abs(s, shift d (c+1) t1)
@@ -125,7 +140,7 @@ struct
                 if isIdent (String.explode s) then
                     s
                 else
-                    errExit ("unexpected token \"" ^ s ^ "\"", 1)
+                    unexpected s
         ) tokens
     end
     fun expect t tokens : string list = case tokens of
@@ -135,49 +150,62 @@ struct
             else
                 tl
         | _ => errExit("expected token \"" ^ t ^ "\", got \"" ^ "EOF" ^ "\"", 1)
-    fun parseLambda ctx (tokens: string list) : term * string list =
+    fun parseLambda (ctx: string list) (tokens: string list) : term * string list * string list =
         case tokens of
         (tok::tokens) =>
             let
-                val _ = print "parseLambda\n"
+                (* val _ = print "parseLambda\n" *)
                 val tokens = expect "." tokens
-                val (body,tokens) = parseSingle (tok::ctx) tokens
+                val (body,ctx,tokens) = parse (tok::ctx) tokens
             in
-                (Abs(tok,body),tokens)
+                (Abs(tok,body),List.tl ctx,tokens)
             end
         | _ => errExit("expected identifier, got \"" ^ "EOF" ^ "\"", 1) 
-    and parseParenExpr ctx (tok::tokens) : term*string list =
+    and parseParenExpr ctx (tok::tokens) : term* string list * string list =
         let
-            val _ = print "parseParenExpr\n"
-            val (t,tokens) = parse ctx (tok::tokens)
+            (* val _ = print "parseParenExpr\n" *)
+            val (t,ctx,tokens) = parse ctx (tok::tokens)
         in
-            (t, expect ")" tokens)
+            (t, ctx, expect ")" tokens)
         end
-        | parseParenExpr _ _ = errExit ("unexpected token \"" ^ "EOF" ^ "\"", 1)
-    and parseSingle ctx (tokens: string list) : term * string list =
+        | parseParenExpr _ _ = unexpected "EOF"
+    and parseSingle ctx (tokens: string list) : term * string list * string list =
         let
-            val _ = print "parseSingle\n"
+            (* val _ = print "parseSingle\n" *)
         in
             case tokens of
-            (tok::tokens) => (case tok of
-                ")" | "." => errExit ("unexpected token \"" ^ tok ^ "\"", 1)
+            (tok::tokens) => (
+                case tok of
+                ")" | "." => unexpected tok
                 | "(" => parseParenExpr ctx tokens
                 | "λ" => parseLambda ctx tokens
-                | id => (Var(indexOf id ctx),tokens)) (* TODO: How to store ID for Var? *)
-            | _ => errExit ("unexpected token \"" ^ "EOF" ^ "\"", 1)
+                | id => (
+                    case (indexOf id ctx) of
+                    SOME(i) => (Var(i),ctx,tokens)
+                    | NONE => let
+                        in
+                        (*
+                        List.map (fn s => print ("CTX: "^s^"\n")) (ctx@[id]);
+                        errExit("undefined var \"" ^ id ^ "\"", 1)
+                        *)
+                        (Var(List.length ctx), ctx@[id], tokens)
+                        end
+                    )
+                )
+            | _ => unexpected "EOF"
         end
     and parse ctx (tokens: string list) =
         let
-            val _ = print "parse\n"
-            val (a,tokens) = parseSingle ctx tokens
+            (* val _ = print "parse\n" *)
+            val (a,ctx,tokens) = parseSingle ctx tokens
         in
             if (List.length tokens) = 0 orelse ((List.hd tokens) = ")") then
-                (a,tokens)
+                (a,ctx,tokens)
             else
                 let
-                    val (b,tokens) = parseSingle ctx tokens
+                    val (b,ctx,tokens) = parseSingle ctx tokens
                 in
-                    (App(a,b),tokens)
+                    (App(a,b),ctx,tokens)
                 end
         end
 end
@@ -189,14 +217,15 @@ val _ = let
     | _ => usage()
     val f = TextIO.openIn filename handle e => (eprint (exnMessage e); usage())
     val tokens = Term.scan f
-    val ctx = ["y", "z"]
-    val (ast,_) = Term.parse ctx tokens
+    val (ast,ctx,tokens) = Term.parse [] tokens
+    val _ = if (List.length tokens) <> 0 then
+        errExit("expected token \"" ^ "EOF" ^ "\", got \"" ^ (List.hd tokens) ^ "\"", 1)
+    else
+        ()
     val ast = eval ast
     val s = Term.toString ctx ast
-    (*val _ = Token.expect f Token.EOF*)
-    (*val s = Term.toDeBruijnString ast*)
 in
-    (*List.map (fn (a,b) => print ("\n" ^ a ^ "\n" ^ b ^ "\n")) tok2*)
-    (*List.map (fn s => print ("TOKEN: "^s^"\n")) tokens;*)
+    (* List.map (fn s => print ("TOKEN: "^s^"\n")) tokens; *)
+    (* List.map (fn s => print ("CTX: "^s^"\n")) ctx; *)
     print s
 end

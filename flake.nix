@@ -12,7 +12,7 @@
       {
         devShell = pkgs.mkShell {
           buildInputs = [
-            pkgs.gopls pkgs.go-outline pkgs.go-tools pkgs.gopkgs pkgs.delve pkgs.go_1_18
+            pkgs.gopls pkgs.go-outline pkgs.go-tools pkgs.gopkgs pkgs.delve pkgs.go_1_18 pkgs.gotools
             pkgs.rustc pkgs.cargo pkgs.clippy pkgs.rustfmt
             pkgs.mlton pkgs.rakudo
           ];
