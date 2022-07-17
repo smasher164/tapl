@@ -78,19 +78,3 @@ func TestSML(t *testing.T) {
 	t.Run("SmallStep", test("./untyped", "-small-step"))
 	t.Run("BigStep", test("./untyped", "-big-step"))
 }
-
-/*
-1. expected but got
-2. unexpected
-3. abstraction
-4. application
-5. variable
-6. context
-
-identity
-
-pass in context?
-
-
-
-*/
