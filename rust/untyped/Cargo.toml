@@ -1,5 +1,5 @@
 [package]
-name = "arith"
+name = "untyped"
 version = "0.1.0"
 authors = ["smasher164 <aindurti@gmail.com>"]
 edition = "2021"
