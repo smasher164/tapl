@@ -61,6 +61,19 @@ func run(name string, args ...string) error {
 	return cmd.Run()
 }
 
+func TestGo(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("could not find 'go' executable in PATH")
+	}
+	goDir := filepath.Join(projectRoot, "go", "untyped")
+	os.Chdir(goDir)
+	if err := run("go", "build"); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("SmallStep", test("./untyped", "-small-step"))
+	t.Run("BigStep", test("./untyped", "-big-step"))
+}
+
 func TestSML(t *testing.T) {
 	if _, err := exec.LookPath("mlton"); err != nil {
 		t.Skip("could not find 'mlton' executable in PATH")

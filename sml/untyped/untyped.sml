@@ -58,7 +58,7 @@ struct
         | Abs(s,t1) => Abs(s, shift d (c+1) t1)
         | App(t1,t2) => App(shift d c t1, shift d c t2)
     fun subst j s t = case t of
-        Var(k) => if k = j then s else Var(k)
+        Var(k) => if k = j then s else t
         | Abs(x,t1) => Abs(x, subst (j+1) (shift 1 0 s) t1)
         | App(t1,t2) => App(subst j s t1, subst j s t2)
     fun substStop s t = shift ~1 0 (subst 0 (shift 1 0 s) t)
@@ -108,7 +108,7 @@ struct
             end
     fun isIdent (hd::tl) =
         if tl = nil then
-            true
+            Char.isAlpha hd
         else
              (hd <> #"'") andalso (Char.isAlpha hd) andalso isIdent tl
         | isIdent nil = false
