@@ -91,3 +91,16 @@ func TestSML(t *testing.T) {
 	t.Run("SmallStep", test("./untyped", "-small-step"))
 	t.Run("BigStep", test("./untyped", "-big-step"))
 }
+
+func TestRust(t *testing.T) {
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("could not find 'cargo' executable in PATH")
+	}
+	rustDir := filepath.Join(projectRoot, "rust")
+	os.Chdir(rustDir)
+	if err := run("cargo", "build", "--quiet", "--release", "-p", "untyped"); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("SmallStep", test("./target/release/untyped", "-small-step"))
+	t.Run("BigStep", test("./target/release/untyped", "-big-step"))
+}
