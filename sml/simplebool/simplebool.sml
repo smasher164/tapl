@@ -3,7 +3,7 @@ fun errExit (z, st) = (eprint z; Posix.Process.exit(Word8.fromInt(st)))
 fun unexpected s = errExit ("unexpected token \"" ^ s ^ "\"", 1)
 
 fun usage() = errExit ("usage: simplebool ( -small-step | -big-step ) file\n\n"
-            ^ "simplebool is an implementation of the simply lambda calculus with booleans (TAPL chapter 9-10).", 2)
+            ^ "simplebool is an implementation of the simply-typed lambda calculus with booleans (TAPL chapter 9-10).", 2)
 
 datatype ty =
     Bool

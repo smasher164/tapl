@@ -18,7 +18,7 @@ var (
 
 func usage() {
 	fmt.Fprint(os.Stderr, "usage: simplebool ( -small-step | -big-step ) file\n\n")
-	fmt.Fprint(os.Stderr, "simplebool is an implementation of the simply lambda calculus with booleans (TAPL chapter 9-10).\n")
+	fmt.Fprint(os.Stderr, "simplebool is an implementation of the simply-typed lambda calculus with booleans (TAPL chapter 9-10).\n")
 	os.Exit(2)
 }
 
@@ -349,9 +349,13 @@ func evalSmallStep(t Term) Term {
 	return evalSmallStep(t1Prime)
 }
 
-func isVal(t Term) (isAbs bool) {
-	_, isAbs = t.(Abs)
-	return
+func isVal(t Term) bool {
+	switch t.(type) {
+	case Abs, True, False:
+		return true
+	default:
+		return false
+	}
 }
 
 func shift(d, c int, t Term) Term {
@@ -439,7 +443,7 @@ func typeOf(ctx []Context, t Term) Ty {
 		tyT2 := typeOf(ctx, t.Arg)
 		switch tyArr := tyT1.(type) {
 		case TyArr:
-			if tyT2 == tyArr.To {
+			if tyT2 == tyArr.From {
 				return tyT2
 			}
 			errExit(fmt.Errorf("parameter type mismatch"))
@@ -456,8 +460,6 @@ func typeOf(ctx []Context, t Term) Ty {
 			if elseType := typeOf(ctx, t.Else); bodyType == elseType {
 				return bodyType
 			}
-			fmt.Printf("%#v\n", bodyType)
-			fmt.Printf("%#v\n", typeOf(ctx, t.Else))
 			errExit(fmt.Errorf("arms of conditional have different types"))
 		} else {
 			errExit(fmt.Errorf("guard of conditional not a boolean"))
